@@ -40,7 +40,7 @@ void error (void) {
 //-----------------------------------------------------------------------------
 // Fills the given buffer with bufferSize chars from a Serial object
 
-void fillBuffer( char *buffer, byte bufferSize, HardwareSerial::HardwareSerial* serial )
+void fillBuffer( char *buffer, byte bufferSize, HardwareSerial* serial )
 {
 	// Clean buffer
 	memset( (void *)buffer, '\0', sizeof(char) * bufferSize );

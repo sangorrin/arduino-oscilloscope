@@ -30,15 +30,16 @@
 
 #define DEBUG		0
 
-#define ADCBUFFERSIZE	1280
+#define ADCBUFFERSIZE	512 //1280
 
 #define ADCPIN		0
 #define errorPin	13
 #define thresholdPin	3
+#define defThreshold    200
 
 #define BAUDRATE	115200	// Baud rate of UART in bps
 #define COMMANDDELAY	10	// ms to wait for the filling of Serial buffer
-#define COMBUFFERSIZE	3	// Size of buffer for incoming numbers
+#define COMBUFFERSIZE	4	// Size of buffer for incoming numbers
 
 #if DEBUG == 1
 	#define dprint(expression) Serial.print("# "); Serial.print( #expression ); Serial.print( ": " ); Serial.println( expression )
@@ -81,13 +82,12 @@ void error (void);
 void fillBuffer( \
 	char *buffer, \
 	byte bufferSize, \
-	HardwareSerial::HardwareSerial* serial = &Serial );
+	HardwareSerial* serial = &Serial );
 void printStatus(void);
 
 //-----------------------------------------------------------------------------
 // Global Variables
 //-----------------------------------------------------------------------------
-extern volatile  boolean wait;
 extern          uint16_t waitDuration;
 extern volatile uint16_t stopIndex;
 extern volatile uint16_t ADCCounter;

@@ -111,7 +111,7 @@ void initPins(void)
 	pinMode( errorPin, OUTPUT );
 	pinMode( thresholdPin, OUTPUT );
 
-	analogWrite( thresholdPin, 127 );
+	analogWrite( thresholdPin, defThreshold );
 }
   
 //-----------------------------------------------------------------------------

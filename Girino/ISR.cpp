@@ -35,18 +35,14 @@ ISR(ADC_vect)
 	// Otherwise, ADCL must be read first, then ADCH.
 	ADCBuffer[ADCCounter] = ADCH;
 
-	ADCCounter = ( ADCCounter + 1 ) % ADCBUFFERSIZE;
+	if (++ADCCounter >= ADCBUFFERSIZE) ADCCounter = 0;
 
-	if ( wait )
+	if ( stopIndex == ADCCounter )
 	{
-		if ( stopIndex == ADCCounter )
-		{
-			// Freeze situation
-			// Disable ADC and stop Free Running Conversion Mode
-			cbi( ADCSRA, ADEN );
-
-			freeze = true;
-		}
+		// Freeze situation
+		// Disable ADC and stop Free Running Conversion Mode
+		cbi( ADCSRA, ADEN );
+		freeze = true;
 	}
 }
 
@@ -62,6 +58,5 @@ ISR(ANALOG_COMP_vect)
 	//digitalWrite( errorPin, HIGH );
 	sbi( PORTB, PORTB5 );
 
-	wait = true;
 	stopIndex = ( ADCCounter + waitDuration ) % ADCBUFFERSIZE;
 }

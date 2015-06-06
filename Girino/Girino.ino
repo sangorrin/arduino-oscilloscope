@@ -32,7 +32,6 @@
 // Global Variables
 //-----------------------------------------------------------------------------
 
-volatile  boolean wait;
          uint16_t waitDuration;
 volatile uint16_t stopIndex;
 volatile uint16_t ADCCounter;
@@ -60,7 +59,6 @@ void setup (void) {		// Setup of the microcontroller
 	memset( (void *)ADCBuffer, 0, sizeof(ADCBuffer) );
 	memset( (void *)commandBuffer, 0, sizeof(commandBuffer) );
 	ADCCounter = 0;
-	wait = false;
 	waitDuration = ADCBUFFERSIZE - 32;
 	stopIndex = -1;
 	freeze = false;
@@ -68,7 +66,7 @@ void setup (void) {		// Setup of the microcontroller
 	prescaler = 128;
 	triggerEvent = 3;
 
-	threshold = 127;
+	threshold = defThreshold;
 
 	// Activate interrupts
 	sei();
@@ -84,7 +82,6 @@ void setup (void) {		// Setup of the microcontroller
 void loop (void) {
 	dprint(ADCCounter);
 	dprint(stopIndex);
-	dprint(wait);
 	dprint(freeze);
 	#if DEBUG == 1
 	Serial.println( ADCSRA, BIN );
@@ -107,14 +104,15 @@ void loop (void) {
 		//digitalWrite( errorPin, LOW );
 		cbi(PORTB,PORTB5);
 
-		wait = false;
+		stopIndex = ADCBUFFERSIZE + 1;
 		freeze = false;
 
 		// Clear buffer
 		//memset( (void *)ADCBuffer, 0, sizeof(ADCBuffer) );
 
-		//startADC();
 		// Let the ADC fill the buffer a little bit
+		// [Note] uncomment the following for continuous coversions
+		//startADC();
 		//delay(1);
 		//startAnalogComparator();
 
@@ -166,12 +164,12 @@ void loop (void) {
 			case 'r':			// 'r' for new voltage reference setting
 			case 'R': {
 				// Wait for COMMANDDELAY ms to be sure that the Serial buffer is filled
-				delay(COMMANDDELAY);
+				delay(COMMANDDELAY * 2);
 
 				fillBuffer( commandBuffer, COMBUFFERSIZE );
 
 				// Convert buffer to integer
-				uint8_t newR = atoi( commandBuffer );
+				uint16_t newR = atoi( commandBuffer );
 
 				// Display moving status indicator
 				Serial.print("Setting voltage reference to: ");
