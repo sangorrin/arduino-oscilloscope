@@ -1,0 +1,165 @@
+Universal PCB board
+2015 (c) Daniel Sangorrin <daniel.sangorrin@gmail.com>
+------------------------------------------------------------------------------
+
+Structure of an Universal PCB board
+===================================
+
+- matrix of pads/holes where the leads of the components are inserted
+    + typically holes are 1mm of diameter and the pitch is 2.54mm
+- sometimes include bus lines (straigth line connecting several pads)
+- normally leads are connected on the underside (solder side)
+
+Main methods to join pads
+=========================
+
+Ref: http://electronics.stackexchange.com/questions/55236/how-to-make-traces-on-an-universal-pcb
+
+- solder bridges (use solder to join pads)
+    + Procedure for connecting pads:
+        -> place components in such a way that leads that need to be connected 
+           are placed in adjacent holes.
+        -> set your soldering iron to a lower temperature
+        -> put some solder on the pads. 
+        -> put some solder on your iron and tip in between the pads. Luckily, you’ll connect them.
+    + Disadvantage: take a lot of solder, especially long ones.
+- jumper/solder wire (typical wire with plastic insulation)
+    + typical wire
+        Ref: http://www.radioshack.com/50-ft-blue-insulated-wrapping-wire-30awg/2780503.html
+        [Note] wire means one single conductor or strand (as opposed to cable)
+               Ref: http://www.differencebetween.info/difference-between-cable-and-wire
+    + best for when you can't go around an existing solder joint.
+    + without solder: http://en.wikipedia.org/wiki/Wire_wrap
+- bare/naked wire (a wire without the plastic wrapper)
+    + allows connecting non-adjacent holes easily
+    + useful for straight lines and buses, using less solder than solder bridges.
+    + disadvantage: could easily make contact with an adjacent pad that should not be connected
+- using the leads (legs) of the components
+    + procedure: bend the leads (legs) of the components and connect to adjacent pads
+    + disadvantage: leads are usually thicker than wire.
+
+Universal board layout software
+===============================
+
+PasS
+----
+
+Ref: http://www.geocities.jp/uaubn/pass/ (official site)
+Ref: http://airvariable.asablo.jp/blog/2012/05/04/6434269 (blog of a user)
+Ref: http://okgnz.web.fc2.com/passcad/index.htm (blog of a user, many circuits!)
+Ref: http://blog.livedoor.jp/cielo_cielo/archives/65820452.html (blog of a user, he used to use paper too)
+
+License:
+    - Free to use only in private.
+
+Installation:
+    - Install Microsoft Visual Basic 5 runtime (Msvbvm50.exe)
+      Ref: https://support.microsoft.com/en-us/kb/180071
+    - Un compress "pass-program.lzh" and "pass-parts.lzh" in a user folder (C:\Users\dsl\pass)
+    - Fix locale settings:
+        Ref: http://users.wfu.edu/yipcw/atg/microsoft/applocale/
+        + Download apploc.mxi > Right-click > Properties > Compatibility with WinXP SP3 > Install it
+          Ref: http://www.microsoft.com/en-us/download/details.aspx?id=13209
+        + Open C:\Windows\AppPatch\AppLoc.exe with Admin permissions
+    - Open AppLoc.exe and follow the wizard to open Pass.exe using Japanese locale
+        [Note] check create a link, so you can open directly with launchy! :D
+        --> It works!
+
+Overview
+    - Upper bar
+        + change to 1/2 pitch
+            -> this is not related with the board's pitch which is 2.54mm (10 pixels)
+               but with a mode that allows you route lines between two pads.
+            -> It consumes double memory, so don't use it unless needed.
+            -> You can also change to 1/2 pitch mode after finishing, for retouching
+               some line. BUT then you cannot go back to normal pitch mode!
+        + rotate 90 degrees
+        + select 1-side or 2-sides board
+    - Left (parts)
+        + boards (akiduki), capacitors, connectors, IL connectors, 
+          diodes, drill holes, ICs, jacks/terminals, LEDs,
+          others (buzzer, transformer, crystal, LCS..), pin headers, 
+          pin sockets, transistors, resistors, IC sockets, sensors, switches, 
+          labels, tools (fill with color for GND, thru holes), user parts.
+    - Right (board)
+        + components side (front side)
+            -> move mode (for placing parts)
+            -> lines mode (for connecting parts)
+                + front (red)
+                + back (blue) <-- typically use this
+                + front using jumper wire (orange)
+                + back using jumper wire (green)
+                + external line (gray): defines the shape of the board after cutting
+            -> zoom 2x (only for connecting parts with lines)
+            -> draw/delete a draft
+            -> display/hide lines, pin numbers, borders, or labels
+            -> save temporarily or periodically, defaults to 10min (alternative to Ctrl-Z)
+            -> copy to clipboard (to save it in word or paint)
+        + soldering side (back side)
+            -> information about amount of wire used
+            -> show/hide lines, parts border
+            -> refresh
+            -> copy to clipboard (to save it in word or paint)
+
+Typical procedure
+    - Create new file
+        + Choose 'no' if they ask you for 1/2 pitch mode (you can set it later anyway)
+    - Move mode (click button with a cursor)
+        + Drag a board to the right part, like Akizuki type C (pitch 2.54mm, diagonal 3.58mm)
+          Ref: http://akizukidenshi.com/catalog/g/gP-03229/
+        + Drag parts into the board (maximum: 500)
+        + Move parts: left-click + drag
+        + Select parts: left-click + drag a rectangle
+        + Right-click on a part: delete, copy, rotate, move to other side 
+            -> Ctrl-C won't work!
+        + Double-click on a part: input reference number and name
+    - Line connection mode (click button with the type of line you want to use, or 2-click board)
+        + zoom 2x. and click lower-right rectangle to zoom the window
+        + paint by dragging
+        + right-click menu works here too.
+        + try to avoid 90 degree corners, use 45 degree instead
+        + if you need to route wires between pads, change to 1/2 pitch mode
+        + if you need to cross a line, use thru holes
+    - Export the result
+        + gerber: use Gonpass addon (based on Gconpass), open in PCBE
+          Ref: http://okgnz.web.fc2.com/passcad/index.htm (Gonpass)
+          Ref: http://www.geocities.jp/uaubn/gconpass/ (Gconpass)
+        + Click on clipboard button, and paste in word or paint
+
+Creating your own parts
+    - All parts are BMP files copied to C:\Users\dsl\pass\parts\USR\xxx.bmp (or to a section).
+        + Edit with Paint!
+    - Boards
+        Ref: pass-doc-create-your-board.pdf
+        + Max size: 900x550 pixels (970x830 dots)
+        + Colors: see the pdf for exact RGB values (or pick them from existing boards)
+        + Holes (in white) must be located at (X,Y) that are multiple of 10.
+        + Back side: 
+            -> change the name xxx.bmp -> xxx_.bmp
+            -> the horizontal axis is inverted
+            -> the upper-left corner pixel must be the same as the front side
+    - Components
+        + Pins are 1 red pixel. They must be separated 10 pixels.
+        + Pin numbers defined by the red color level (0..255)
+
+Adding lettering
+    - use the smallfonts.png as a reference and draw letters/numbers with 
+      paint or FireAlpaca pixel-by-pixel.
+        
+Fritzing
+--------
+
+Ref: http://fritzing.org/home/ (official site)
+Ref: http://fab.fritzing.org/fritzing-fab (converts design into a PCB)
+
+MBE: Minimal Editor Board
+-------------------------
+
+Ref: http://www.suigyodo.com/online/mbe/mbe.htm (official site)
+Ref: http://www.ne.jp/asahi/air/variable/picmel/applications/melody/index.html (blog of a user)
+
+
+    
+    
+    
+
