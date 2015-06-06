@@ -1,0 +1,318 @@
+Arduino oscilloscope (based on Girino/Girinoscope)
+2015 (c) Daniel Sangorrin <daniel.sangorrin@gmail.com>
+-------------------------------------------------------------------------------
+
+Ref: http://www.instructables.com/id/Girino-Fast-Arduino-Oscilloscope/?ALLSTEPS (main guide)
+Ref: http://www.instructables.com/files/orig/FQ1/8HPC/GZV1CF98/FQ18HPCGZV1CF98.7z (arduino code and circuit)
+Ref: https://hackaday.io/project/5881-small-scope (replica with pcb and gui)
+
+Overview
+========
+
+Waveform Digitizers:
+    - incoming signal should be decoupled from the arduino to preserve it
+    - with an offset of the signal it is possible to see negative signals
+    - the sampling data should be buffered instead of being sent one by one
+    - a hardware trigger is required to catch the signals
+    - a circular buffer can be used to store a few samples of the signal just before the trigger 
+    - using lower lever functions that the standard ones makes the program run faster.
+
+Specs:
+    - Input range: -2,5..2,5V (0..5V without level shifter)
+    - Resolution: 8bit/sample
+    - Sampling freq: 153.8 Ksamples/s (307.7 Ksamples/s for ATmega328)
+		-> Calculation: Clock/Preescaler/CyclesPerSample
+			- Clock: 16MHz or 20Mhz
+			- Preescaler: 2..128
+			- CyclesPerSample: 13
+      Ref: http://www.openmusiclabs.com/learning/digital/atmega-adc/
+      Ref: http://www.openmusiclabs.com/learning/digital/atmega-adc/in-depth/
+    - Samples/trigger: 512 samples (1280 samples for ATmega328)
+    - Threshold PWM freq: 62.5 KHz (with a low pass filter at 560Hz)
+
+Arduino hardware
+================
+
+ATMega328P
+    Ref: Ref: http://www.atmel.com/images/Atmel-8271-8-bit-AVR-Microcontroller-ATmega48A-48PA-88A-88PA-168A-168PA-328-328P_datasheet_Complete.pdf (ATMMega328P datasheet)
+
+Pinout
+    - [Opt] errorPin: pin13 (connected to led, commented out in code by default)
+    - pin 3 (PWM)
+        + it is used to generate a PWM wave that gets filtered and 
+          serves as the threshold for the trigger to work
+          [Note] instead, you can use a potentiometer
+    - pin 7 (V- of analog comparator)
+        + connected to the threshold signal (either the PWM signal filtered, or 
+          the one coming from a potentiometer)
+    - pin 6 (V+ of analog comparator)
+        + connected to the input signal after ofset level and buffering.
+        + when V+ > V- it generates an interrupt
+          Ref: http://www.instructables.com/id/Girino-Fast-Arduino-Oscilloscope/step11/How-the-Analog-Comparator-works/
+    - pin A0 (analog input 0)
+        + also connected to the input signal.
+
+ADC registers (see Inits.cpp):
+    - ADMUX: 
+        + set reference voltage for ADC (AVCC with external capacitor at AREF pin)
+        + enable A0 pin
+        + left adjust the sample so that it is stored in ADCL
+    - ACSR: analogue comparator settings
+        + trigger event (rising)
+        + threshold option (don't use the internal bandgap)
+    - ADCSRA: 
+        + select preescaler
+            -> division factor: 128 (16MHz/128=125KHz)
+        + enable ADC sample available interrupt
+    - ADCSRB: 
+        + select Free Running mode.
+        + enable AnalogComparator for triggering
+    - ADCH: high part of the sample (not used in girino)
+    - ADCL: low part of the sample
+    - DIDR0: disable the digital input buffer of A0-A5 (use them as analog pins)
+    - DIDR1: disable the digital input buffer of pins 6-7 (use them as analog comparator)
+    - TCCR2A, TCCR2B: set to fast PWM 0xFF, no preescale (for the threshold), timer 2
+    - Output Compare Registers A/B (OCRnx): are used to set the signal duty cycle.
+      Ref: f = clock_freq/prescaler/TCNTn_maximum = 16MHz/1/256 = 62.5 KHz
+      [Note] TCNTn_maximum for Timer 0 and 2 (8-bit) is 256
+      [Note] TCNTn_maximum for Timer 0 and 2 (8-bit) is 65536
+      Ref: http://arduino.cc/en/Tutorial/SecretsOfArduinoPWM
+
+Girino hardware
+===============
+
+Power supply (akiduki 650yen, http://akizukidenshi.com/catalog/g/gM-01805/)
+    - 15V power supply: 2
+Voltage regulators 
+    - 7812: 1 (+12V) (akiduki 50yen, http://akizukidenshi.com/catalog/g/gI-00163/)
+    - 7912: 1 (-12V) (akiduki 50yen, http://akizukidenshi.com/catalog/g/gI-03973/
+OpAmps
+    - LM324: 4 (akiduki 150yen, http://akizukidenshi.com/catalog/g/gI-00959/)
+      [Alt] TL084 (akiduki 300yen, http://akizukidenshi.com/catalog/g/gI-04083/)
+    - IC socket 14pin: 1 (akiduki 100yen, http://akizukidenshi.com/catalog/g/gP-00006/)
+Resistors
+    - 1K: 2
+    - 1M: 1
+    - 10K: 4
+    - 1K8: 1
+Potentiometer
+    - 1K: 1 (akiduki 80yen, http://akizukidenshi.com/catalog/g/gP-00973/)
+Jumper
+    - pin header: 1 (akiduki 100yen, http://akizukidenshi.com/catalog/g/gC-00167/)
+    - jumper: 4 (akiduki 100yen, http://akizukidenshi.com/catalog/g/gP-03688/)
+Capacitors
+    Ref: http://www.electronics2000.co.uk/calc/capacitor-code-calculator.php
+    - 10uF: 3 (electrolitic, have a +) <-- filters low-freq noise
+    - 1uF: 2 (ceramic) <-- filters high-freq noise
+    - 2.2uF: 1 (electrolitic)
+    - 0.33uF: 1 (electrolitic)
+    - 100nF=0.1uF: 3 (ceramic)
+Universal board
+    - for arduino (akiduki 200yen, http://akizukidenshi.com/catalog/g/gP-06877/)
+
+[Opt] Probe 60MHz (aitendo 900yen, http://www.aitendo.com/product/6705)
+[Opt] BNC connector (aitendo)
+[Note] Bypass Capacitors should be put as close as possible to the 
+       alimentation pins of the IC. They are used usually in couple, one 
+       ceramic and one electrolytic because they can filter out different 
+       frequencies.
+
+My hardware modifications
+=========================
+
+Ref: http://www.lcardaba.com/articles/opamps.html
+Ref: https://github.com/marvin-sinister/small-scope-electronics (replica's Kicad project)
+
+[Opt] Input voltage protection circuit (add clamp diodes)
+    Ref: http://electronics.stackexchange.com/questions/35807/how-would-i-design-a-protection-clipper-circuit-for-adc-input
+    + To protect the input stage against overvoltage I'd add clamping diodes to 
+      VCC and VSS, respectively, right at the place where the 1 MOhm resistor is. 
+      Good, cheap, fast, low-capacitance diodes would be e.g. 1N914
+    + Other diodes: 1SS380, 1S2076A, JFET transistor with S and D connected..
+
+[Opt] Shift voltage: 
+    + use an OpAmp in buffer configuration before the 10kohm resistor
+
+[Opt] Threshold:
+    - Use a better filter 
+      Ref: http://www.analog.com/designtools/en/filterwizard/#/type
+    - Use the 3.3V provided by arduino as threshold value
+    - Use a trimmer (potentiometer) to set the voltage level
+    - using the internal bangap reference we can use a fixed level.
+      Ref: http://provideyourown.com/2012/secret-arduino-voltmeter-measure-battery-voltage/
+      Ref: http://electronics.stackexchange.com/questions/997/monitoring-voltage-without-a-known-reference
+[Opt] For arduino, I could use a 20MHz clock.
+[Opt] Low-pass filter: using a 1.8k resistor and a 1uF capacitor gets you a 
+      cut-off frequency of 88.5Hz [ 1/(2*pi*R*C) ], not 560Hz [ 1 / (R*C) ] 
+      which is rad/s.
+[Opt] One thing to be careful about: If you supply the op-amp with +/-12V it 
+      can drive almost as much into your Arduino - which will most likely kill 
+      the latter! Would be a good idea to add a series resistor after the last 
+      op-amp stage, and behind that two clamping diodes (Schottky type) going 
+      to 0V and 5V, respectively.
+[Opt] The third op-amp stage isn't really needed. Did you try to run without it? 
+      (make sure the unused op-amps inputs are tied to VCC and VSS, respectively, 
+      to avoid oscillations).
+
+Girino code
+===========
+
+Ref: https://github.com/marvin-sinister/small-scope (replica's code)
+
+Overview of the program:
+    - flow
+        + an interrupt samples the signal every xx us and stores it in a circular buffer.
+        + when the signal surpasses a threshold: there is a trigger interrupt!
+          [Note] we specify the threshold with analogwrite (PWM + filter)
+        + after the trigger, we take 'waitDuration' samples (sweep) and then disable/freeze sampling (holdoff)
+        + then, we send the samples (the ones before the trigger plus the waitDuration samples) to the host.
+        + finally, we enable sampling again.
+    - data structures
+        + Inter-communication flags
+            -> boolean freeze (send_samples_flag): if True send the buffer to the serial port (set by ADC_vect)
+            -> boolean wait (trigger): indicates that the threshold was surpassed, and we must freeze after waitDuration more samples.
+            -> uint16_t waitDuration (samples_per_trigger): samples to take after the trigger (by default: 1280 - 32)
+        + Circular buffer
+            -> uint8_t ADCBuffer[1280]: circular buffer with the 8bit samples.
+            -> uint16_t ADCCounter: cursor to the next empty slot in ADCBuffer.
+            -> uint16_t stopIndex: cursor to the last slot to sample before freezing.
+        + Settings
+            -> uint8_t prescaler: system_clock_freq / ADC_input_clock (default 128)
+            -> uint8_t triggerEvent: type of trigger (0:toggle, 2: falling edge, 3: rising edge. Default: 3)
+            -> uint8_t threshold: the threshold voltage for triggering (analogwrite PWM, default 127)
+            -> char commandBuffer[4+1]: used to change settings from the host
+    - setup
+        + Baudrate: 115200
+        + Init data structures
+        + Enable interrupts: sei()
+        + initPins();
+        + initADC();
+        + initAnalogComparator();
+    - loop
+        + if freeze is true
+            -> Send "ADCBuffer" through serial port
+            -> cbi(PORTB,PORTB5);
+            -> wait = false;
+            -> freeze = false;
+        + if serial input available
+            -> parse command
+    - interrupts
+        Ref: http://www.nongnu.org/avr-libc/user-manual/group__avr__interrupts.html
+        + ADC_vect: ADC Conversion Complete Interrupt
+            -> gets 8bit sample into the ADCBuffer
+            -> ADCCounter++
+            -> if wait
+                if (stopIndex == ADCCounter) <-- buffer is filled
+                    disable ADC and stop Free Running Conversion Mode: cbi( ADCSRA, ADEN );
+                    send to the host: freeze = true;
+        + ANALOG_COMP_vect: Analog Comparator interrupt
+          [Note] compares a signal with a reference voltage. If the signal 
+                 surpasses it it raises an interrupt.
+            -> disable Analog Comparator interrupt: cbi( ACSR,ACIE );
+            -> sbi( PORTB, PORTB5 );
+            -> wait = true;
+            -> stopIndex = ( ADCCounter + waitDuration ) % ADCBUFFERSIZE;
+
+Util functions
+    DEBUG: enable debugging messages
+    dprint(x): writes to the serial port something like: # x: 123
+    dshow("Some string"): writes the string
+    cbi(sfr, bit): clears a bit in register sfr
+    sbi(sfr, bit): sets a bit in register sfr
+
+Patch (from girinoscope)
+    - Girino.h, line 41:
+        // Replaced 3 by 4 since the wait duration range is [0, 1280].
+        #define COMBUFFERSIZE   4   // Size of buffer for incoming numbers
+    - Girino.ino, line 224:
+        // Added a necessary x2 factor since we read 16 bits now.
+        delay(COMMANDDELAY * 2);
+    - Girino.ino, line 229:
+        // Replaced 'uint8' by 'uint16' for the same reason.
+        uint16_t newT = atoi( commandBuffer );
+
+Patch (from Woami http://www.instructables.com/member/womai/) for efficiency (ISR.cpp)
+    1) Integer division is time consuming:
+        -ADCCounter = ( ADCCounter + 1 ) % ADCBUFFERSIZE;
+        +if (++ADCCounter >= ADCBUFFERSIZE) ADCCounter = 0;
+    2) Avoid the variable wait by setting stopIndex to a value that the counter never reaches
+       when you aren't yet in the post-trigger phase (when starting a new sweep)
+        -if(wait) 
+        +stopIndex = ADCBUFFERSIZE + 1;
+
+        ISR(ANALOG_COMP_vect) {
+            // Disable Analog Comparator interrupt
+            cbi( ACSR,ACIE );
+            // Turn on errorPin
+            //digitalWrite( errorPin, HIGH );
+            sbi( PORTB, PORTB5 );
+            stopIndex = ( ADCCounter + waitDuration ) % ADCBUFFERSIZE;
+        }
+
+        ISR(ADC_vect) {
+            ADCBuffer[ADCCounter] = ADCH;
+            if (++ADCCounter >= ADCBUFFERSIZE) ADCCounter = 0;
+            if ( stopIndex == ADCCounter ) {
+                cbi( ADCSRA, ADEN );
+                freeze = true;
+            }
+        }
+
+If error "HardwareSerial::HardwareSerial' is not a type"
+    -HardwareSerial::HardwareSerial
+    +HardwareSerial
+
+[Opt] Patch to increase the speed of the serial port to 1Mbps
+	Ref: https://mekonik.wordpress.com/2009/03/02/modified-arduino-library-serial/
+	Ref: https://github.com/marvin-sinister/small-scope-qt (replica's GUI)
+
+Oscilloscope frontend
+=====================
+
+Ref: https://github.com/Chatanga/Girinoscope/releases (oscilloscope frontend code)
+
+Linux
+    $ sudo apt-get install ant
+    $ git clone https://github.com/Chatanga/Girinoscope.git
+    $ cd Girinoscope
+	$ vi src/xxx/comm/Girino.java
+		-> change buffer size 1280 to 512
+    $ ant build
+    $ ant run
+        --> it works
+Windows
+    - Download release and just double-click girinoscope.bat
+
+Ref: https://github.com/marvin-sinister/small-scope-qt (replica's GUI)
+
+TODO
+
+Signal gnerator
+===============
+
+You can build a simple analog signal generator with an Arduino driving a 
+R-2R resistor network (google the term and you'll get plenty of hits) 
+from an 8-bit port. Use 1% resistors and you'll get almost 8 bits of 
+resolution. You can the scale an buffer the signal with an op-amp stage. 
+Just a few cents worth of parts apart from the arduino.
+Here is such a project that uses an AVR, ready to be copied:
+http://www.myplace.nu/avr/minidds/index.htm
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
