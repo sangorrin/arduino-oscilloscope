@@ -97,7 +97,7 @@ public class Girino {
             double baseFrequency = 16 * 1000 * 1000;
             double clockCycleCountPerConversion = 13;
             frequency = baseFrequency / value / clockCycleCountPerConversion;
-            timeframe = 1280 / frequency;
+            timeframe = 512 / frequency;
             tooFast = n < 5;
             reallyTooFast = n < 3;
             description = String.format("%.1f kHz / %.1f ms", frequency / 1000, timeframe * 1000);
@@ -165,12 +165,12 @@ public class Girino {
     private Map<Parameter, Integer> parameters = new HashMap<Parameter, Integer>();
 
     public static Map<Parameter, Integer> getDefaultParameters(Map<Parameter, Integer> parameters) {
-        parameters.put(Parameter.BUFFER_SIZE, 1280);
+        parameters.put(Parameter.BUFFER_SIZE, 512);
         parameters.put(Parameter.PRESCALER, 32);
         parameters.put(Parameter.VOLTAGE_REFERENCE, VoltageReference.AVCC.value);
         parameters.put(Parameter.TRIGGER_EVENT, TriggerEventMode.TOGGLE.value);
-        parameters.put(Parameter.WAIT_DURATION, 1280 - 32);
-        parameters.put(Parameter.THRESHOLD, 150);
+        parameters.put(Parameter.WAIT_DURATION, 512 - 32);
+        parameters.put(Parameter.THRESHOLD, 200);
         return parameters;
     }
 
@@ -269,7 +269,7 @@ public class Girino {
          * catch a lot of the signal before the trigger if it happens too fast.
          */
         try {
-            byte[] buffer = new byte[1280];
+            byte[] buffer = new byte[512];
             int size = serial.readBytes(buffer);
             return size == buffer.length ? buffer : null;
         } finally {

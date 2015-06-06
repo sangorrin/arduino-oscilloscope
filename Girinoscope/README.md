@@ -1,3 +1,7 @@
+[Note] the original source is at https://github.com/Chatanga/Girinoscope, I
+       only patched the buffer size for ATmega168
+         -- Daniel Sangorrin
+
 Girinoscope
 ===========
 
